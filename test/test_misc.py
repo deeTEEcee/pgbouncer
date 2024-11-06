@@ -5,7 +5,7 @@ import time
 import psycopg
 import pytest
 
-from .utils import HAVE_IPV6_LOCALHOST, PG_MAJOR_VERSION, PKT_BUF_SIZE, WINDOWS
+from .utils import HAVE_IPV6_LOCALHOST, PG_MAJOR_VERSION, PKT_BUF_SIZE, WINDOWS, Bouncer
 
 
 def test_connect_query(bouncer):
@@ -391,3 +391,17 @@ def test_issue_1104(bouncer):
 
         with bouncer.run_with_config(config):
             bouncer.admin("RELOAD")
+
+def test_forced_user_reload(pg, bouncer):
+    # Use default config: p0 = user=bouncer
+    bouncer.sleep(1, dbname="p0", user="bouncer")
+    assert pg.connection_count(dbname="p0", users=("bouncer",)) == 1
+    config = f"""
+    p0 = port=6666 host=127.0.0.1 dbname=p0 user=muser1
+    """
+
+    # Check that forced user muser1 gets the connection, not bouncer.
+    with bouncer.run_with_config(config):
+        bouncer.sleep(1, dbname="p0", user="muser1")
+        assert pg.connection_count(dbname="p0", users=("muser1",)) == 1
+        assert pg.connection_count(dbname="p0", users=("bouncer",)) == 0

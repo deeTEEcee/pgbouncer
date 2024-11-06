@@ -248,7 +248,6 @@ async def test_min_pool_size(pg, bouncer):
     await result
     assert pg.connection_count(dbname="p0", users=("postgres",)) == 5
 
-
 @pytest.mark.parametrize(
     ("test_db", "test_user"),
     [
@@ -465,15 +464,14 @@ async def test_reserve_pool_size(pg, bouncer):
 
     # Disable tls to get more consistent timings
     bouncer.admin("set server_tls_sslmode = disable")
-
     with bouncer.log_contains("taking connection from reserve_pool", times=3):
         # default_pool_size is 5, so half of the connections will need to wait
         # until the reserve_pool_timeout (2 seconds) is reached. At that point
         # 3 more connections should be allowed to continue.
-        result = bouncer.asleep(10, dbname="p1", times=10)
+        result = bouncer.asleep(5, dbname="p1", times=10)
         await asyncio.sleep(1)
         assert pg.connection_count("p1") == 5
-        await asyncio.sleep(8)
+        await asyncio.sleep(5)
         assert pg.connection_count("p1") == 8
         await result
 
